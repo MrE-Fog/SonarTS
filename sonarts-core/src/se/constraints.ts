@@ -20,6 +20,7 @@
 export enum ConstraintKind {
   Falsy,
   Truthy,
+  Executed,
 }
 
 export interface Constraint {
@@ -34,12 +35,20 @@ export interface FalsyConstraint extends Constraint {
   kind: ConstraintKind.Falsy;
 }
 
+export interface ExecutedConstraint extends Constraint {
+  kind: ConstraintKind.Executed;
+}
+
 export function isTruthyConstraint(constraint: Constraint): constraint is TruthyConstraint {
-  return constraint.kind === ConstraintKind.Truthy;
+  return constraint.kind === ConstraintKind.Truthy || constraint.kind === ConstraintKind.Executed;
 }
 
 export function isFalsyConstraint(constraint: Constraint): constraint is FalsyConstraint {
   return constraint.kind === ConstraintKind.Falsy;
+}
+
+export function isExecutedConstraint(constraint: Constraint): constraint is ExecutedConstraint {
+  return constraint.kind === ConstraintKind.Executed;
 }
 
 export function truthyConstraint(): TruthyConstraint {
@@ -48,6 +57,10 @@ export function truthyConstraint(): TruthyConstraint {
 
 export function falsyConstraint(): FalsyConstraint {
   return { kind: ConstraintKind.Falsy };
+}
+
+export function executedConstraint(): ExecutedConstraint {
+  return { kind: ConstraintKind.Executed };
 }
 
 export function isEqualConstraints(a: Constraint, b: Constraint): boolean {
@@ -74,6 +87,12 @@ export function constrain(list: Constraint[], candidate: Constraint): Constraint
 }
 
 function constrainWith(what: Constraint, withWhat: Constraint): Constraint[] | undefined {
+  if (what.kind === ConstraintKind.Executed && withWhat.kind === ConstraintKind.Truthy) {
+    return [what];
+  }
+  if (what.kind === ConstraintKind.Truthy && withWhat.kind === ConstraintKind.Executed) {
+    return [withWhat];
+  }
   return what.kind === withWhat.kind ? [what] : undefined;
 }
 
@@ -83,4 +102,8 @@ export function isTruthy(constraints: Constraint[]) {
 
 export function isFalsy(constraints: Constraint[]) {
   return constraints.length === 1 && isFalsyConstraint(constraints[0]);
+}
+
+export function isExecuted(constraints: Constraint[]) {
+  return constraints.length === 1 && isExecutedConstraint(constraints[0]);
 }

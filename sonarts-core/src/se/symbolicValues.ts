@@ -23,6 +23,7 @@ export enum SymbolicValueType {
   Undefined,
   ObjectLiteral,
   BooleanLiteral,
+  Executable,
 }
 
 export interface SymbolicValue {
@@ -50,6 +51,10 @@ export interface BooleanLiteralSymbolicValue extends SymbolicValue {
   readonly type: SymbolicValueType.BooleanLiteral;
 }
 
+export interface ExecutableSymbolicValue extends SymbolicValue {
+  readonly type: SymbolicValueType.Executable;
+}
+
 export function numericLiteralSymbolicValue(value: string): NumericLiteralSymbolicValue {
   return { type: SymbolicValueType.NumericLiteral, value };
 }
@@ -70,6 +75,10 @@ export function booleanLiteralSymbolicValue(): BooleanLiteralSymbolicValue {
   return { type: SymbolicValueType.BooleanLiteral };
 }
 
+export function executableSymbolicValue(): ExecutableSymbolicValue {
+  return { type: SymbolicValueType.Executable };
+}
+
 export function isEqualSymbolicValues(a: SymbolicValue, b: SymbolicValue) {
   return isNumericLiteralSymbolicValue(a) && isNumericLiteralSymbolicValue(b) ? a.value === b.value : a.type === b.type;
 }
@@ -80,4 +89,8 @@ export function isNumericLiteralSymbolicValue(value: SymbolicValue): value is Nu
 
 export function isUndefinedSymbolcValue(value: SymbolicValue): value is UndefinedSymbolicValue {
   return value.type === SymbolicValueType.Undefined;
+}
+
+export function isExecutableSymbolicValue(value: SymbolicValue): value is ExecutableSymbolicValue {
+  return value.type === SymbolicValueType.Executable;
 }

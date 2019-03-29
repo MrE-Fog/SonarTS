@@ -24,11 +24,12 @@ import {
   undefinedSymbolicValue,
   objectLiteralSymbolicValue,
   booleanLiteralSymbolicValue,
+  executableSymbolicValue,
 } from "./symbolicValues";
 import { ProgramState } from "./programStates";
 import { SymbolTable } from "../symbols/table";
 import { collectLeftHandIdentifiers } from "../utils/navigation";
-import { truthyConstraint, falsyConstraint, isFalsy, isTruthy } from "./constraints";
+import { truthyConstraint, falsyConstraint, isFalsy, isTruthy, executedConstraint, isExecuted } from "./constraints";
 import * as nodes from "../utils/nodes";
 
 export function applyExecutors(
@@ -83,6 +84,10 @@ export function applyExecutors(
 
   if (nodes.isPrefixUnaryExpression(programPoint)) {
     return prefixUnaryExpression(programPoint);
+  }
+
+  if (nodes.isFunctionLikeDeclaration(programPoint)) {
+    return functionLikeDeclaration(programPoint);
   }
 
   return state.pushSV(simpleSymbolicValue());
@@ -140,6 +145,22 @@ export function applyExecutors(
     }, state);
   }
 
+  function functionLikeDeclaration(declaration: ts.FunctionLikeDeclaration) {
+    const esv = executableSymbolicValue();
+    // May create a variable binding
+    if (nodes.isIdentifier(declaration.name as ts.Node)) {
+      const name = declaration.name as ts.Identifier;
+      const variable = symbolAt(name);
+      if (!variable || !shouldTrackSymbol(variable)) {
+        return state;
+      }
+  
+      return state.setSV(variable, esv);
+    }
+    // Could be used as an expression
+    return state.pushSV(esv);
+  }
+
   function variableDeclaration(declaration: ts.VariableDeclaration) {
     if (nodes.isIdentifier(declaration.name)) {
       let [value, nextState] = state.popSV();
@@ -158,9 +179,13 @@ export function applyExecutors(
 
   function callExpression(callExpression: ts.CallExpression) {
     let nextState = state;
+    let sv;
     callExpression.arguments.forEach(_ => (nextState = nextState.popSV()[1]));
-    nextState = nextState.popSV()[1]; // Pop callee value
-    return nextState.pushSV(simpleSymbolicValue());
+    nextState = nextState.constrain(executedConstraint())!; // Constrain callee
+    [sv, nextState] = nextState.popSV(); // Pop callee value
+    nextState = nextState.pushSV(simpleSymbolicValue());
+
+    return nextState;
   }
 
   function objectLiteralExpression() {
