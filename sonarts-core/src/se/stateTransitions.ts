@@ -37,6 +37,7 @@ export function applyExecutors(
   state: ProgramState,
   symbols: SymbolTable,
   shouldTrackSymbol: (symbol: ts.Symbol) => boolean = () => true,
+  onCallNode: (node: ts.CallExpression) => boolean[],
 ): ProgramState {
   const { parent } = programPoint;
 
@@ -154,7 +155,7 @@ export function applyExecutors(
       if (!variable || !shouldTrackSymbol(variable)) {
         return state;
       }
-  
+
       return state.setSV(variable, esv);
     }
     // Could be used as an expression
@@ -178,9 +179,15 @@ export function applyExecutors(
   }
 
   function callExpression(callExpression: ts.CallExpression) {
+    const mustCall = onCallNode(callExpression);
     let nextState = state;
     let sv;
-    callExpression.arguments.forEach(_ => (nextState = nextState.popSV()[1]));
+    callExpression.arguments.forEach((_, i) => {
+      if (mustCall[i]) {
+        nextState = nextState.constrain(executedConstraint())!;
+      }
+      [sv, nextState] = nextState.popSV();
+    });
     nextState = nextState.constrain(executedConstraint())!; // Constrain callee
     [sv, nextState] = nextState.popSV(); // Pop callee value
     nextState = nextState.pushSV(simpleSymbolicValue());

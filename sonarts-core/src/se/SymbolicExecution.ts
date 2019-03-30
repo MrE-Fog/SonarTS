@@ -18,7 +18,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 import * as ts from "typescript";
-import { ControlFlowGraph, CfgBlock, CfgBranchingBlock } from "../cfg/cfg";
+import { ControlFlowGraph, CfgBlock, CfgBranchingBlock, CfgEndBlock } from "../cfg/cfg";
 import { applyExecutors } from "./stateTransitions";
 import { ProgramState } from "./programStates";
 import { SymbolTable } from "../symbols/table";
@@ -27,7 +27,8 @@ import { is } from "../utils/nodes";
 
 const BLOCK_VISITS_LIMIT = 1000;
 
-export type ProgramNodes = Map<ts.Node, ProgramState[]>;
+export type ProgramPoint = ts.Node | CfgBlock;
+export type ProgramNodes = Map<ProgramPoint, ProgramState[]>;
 
 export interface ExecutionResult {
   programNodes: ProgramNodes;
@@ -40,6 +41,7 @@ export function execute(
   symbols: SymbolTable,
   initialState: ProgramState,
   shouldTrackSymbol: (symbol: ts.Symbol) => boolean = () => true,
+  onCallNode: (node: ts.CallExpression) => boolean[] = () => [],
 ): ExecutionResult | undefined {
   const programNodes: ProgramNodes = new Map();
   const branchingProgramNodes: ProgramNodes = new Map();
@@ -63,7 +65,7 @@ export function execute(
     for (const programPoint of block.getElements()) {
       programState = visitProgramPoint(programPoint, programState);
     }
-
+    programNodes.set(block, [...(programNodes.get(block) || []), programState]);
     visitSuccessors(block, programState);
   }
 
@@ -113,7 +115,7 @@ export function execute(
 
   function visitProgramPoint(programPoint: ts.Node, programState: ProgramState) {
     addToProgramNodes(programPoint, programState);
-    return applyExecutors(programPoint, programState, symbols, shouldTrackSymbol);
+    return applyExecutors(programPoint, programState, symbols, shouldTrackSymbol, onCallNode);
   }
 
   function addToProgramNodes(programPoint: ts.Node, programState: ProgramState) {
