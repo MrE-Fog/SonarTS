@@ -76,7 +76,7 @@ export function applyExecutors(
   }
 
   if (nodes.isPropertyAccessExpression(programPoint)) {
-    return propertyAccessExpression();
+    return propertyAccessExpression(programPoint);
   }
 
   if (nodes.isPostfixUnaryExpression(programPoint)) {
@@ -95,8 +95,15 @@ export function applyExecutors(
 
   function identifier(identifier: ts.Identifier) {
     const symbol = symbolAt(identifier);
-    let sv = (symbol && state.sv(symbol)) || simpleSymbolicValue();
-    return state.pushSV(sv);
+    let sv = symbol && state.sv(symbol);
+    let nextState = state;
+    if (!sv) {
+      sv = simpleSymbolicValue();
+      if (symbol) {
+        nextState = state.setSV(symbol, sv);
+      }
+    }
+    return nextState.pushSV(sv);
   }
 
   function numeralLiteral(literal: ts.NumericLiteral) {
@@ -200,8 +207,9 @@ export function applyExecutors(
     return state.pushSV(objectLiteralSymbolicValue());
   }
 
-  function propertyAccessExpression() {
-    return state.popSV()[1].pushSV(simpleSymbolicValue());
+  function propertyAccessExpression(pAccess: ts.PropertyAccessExpression) {
+    state = state.popSV()[1].pushSV(simpleSymbolicValue())
+    return identifier(pAccess.name);
   }
 
   function prefixUnaryExpression(unary: ts.PrefixUnaryExpression) {
