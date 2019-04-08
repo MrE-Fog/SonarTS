@@ -32,12 +32,24 @@ import { collectLeftHandIdentifiers } from "../utils/navigation";
 import { truthyConstraint, falsyConstraint, isFalsy, isTruthy, executedConstraint, isExecuted } from "./constraints";
 import * as nodes from "../utils/nodes";
 
+export interface InterProcedural {
+  parameters: boolean[],
+  closure: ts.Symbol[],
+}
+
+export namespace InterProcedural {
+  export const Default = {
+    parameters: [],
+    closure: [],
+  };
+}
+
 export function applyExecutors(
   programPoint: ts.Node,
   state: ProgramState,
   symbols: SymbolTable,
   shouldTrackSymbol: (symbol: ts.Symbol) => boolean = () => true,
-  onCallNode: (node: ts.CallExpression) => boolean[],
+  onCallNode: (node: ts.CallExpression) => InterProcedural,
 ): ProgramState {
   const { parent } = programPoint;
 
@@ -186,7 +198,7 @@ export function applyExecutors(
   }
 
   function callExpression(callExpression: ts.CallExpression) {
-    const mustCall = onCallNode(callExpression);
+    const { parameters: mustCall, closure } = onCallNode(callExpression);
     let nextState = state;
     let sv;
     callExpression.arguments.forEach((_, i) => {
@@ -195,6 +207,10 @@ export function applyExecutors(
       }
       [sv, nextState] = nextState.popSV();
     });
+    // Now for closure symbols
+    for (const symbol of closure) {
+      nextState = nextState.constrainSymbol(symbol, executedConstraint())!;
+    }
     nextState = nextState.constrain(executedConstraint())!; // Constrain callee
     [sv, nextState] = nextState.popSV(); // Pop callee value
     nextState = nextState.pushSV(simpleSymbolicValue());

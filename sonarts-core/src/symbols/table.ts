@@ -43,13 +43,17 @@ export class SymbolTable {
     return this.usagesBySymbol.get(symbol) || [];
   }
 
+  public allUsagesInside(node: ts.Node): Usage[] {
+    return Array.from(this.usages.values()).filter(usage => usage.isUsedInside(node));
+  }
+
   public getSymbols(): ts.Symbol[] {
     return Array.from(this.usagesBySymbol.keys());
   }
 }
 
 export class Usage {
-  constructor(public readonly symbol: ts.Symbol, public readonly flags: UsageFlag, public readonly node: ts.Node) {}
+  constructor(public readonly symbol: ts.Symbol, public readonly flags: UsageFlag, public readonly node: ts.Node) { }
 
   public is(requestedFlags: UsageFlag) {
     return (this.flags & requestedFlags) > 0;

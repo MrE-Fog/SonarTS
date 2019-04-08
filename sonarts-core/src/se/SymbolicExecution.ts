@@ -19,7 +19,7 @@
  */
 import * as ts from "typescript";
 import { ControlFlowGraph, CfgBlock, CfgBranchingBlock, CfgEndBlock } from "../cfg/cfg";
-import { applyExecutors } from "./stateTransitions";
+import { applyExecutors, InterProcedural } from "./stateTransitions";
 import { ProgramState } from "./programStates";
 import { SymbolTable } from "../symbols/table";
 import { CONDITIONAL_STATEMENTS, LOOP_STATEMENTS } from "../utils/navigation";
@@ -41,7 +41,7 @@ export function execute(
   symbols: SymbolTable,
   initialState: ProgramState,
   shouldTrackSymbol: (symbol: ts.Symbol) => boolean = () => true,
-  onCallNode: (node: ts.CallExpression) => boolean[] = () => [],
+  onCallNode: (node: ts.CallExpression) => InterProcedural = () => InterProcedural.Default,
 ): ExecutionResult | undefined {
   const programNodes: ProgramNodes = new Map();
   const branchingProgramNodes: ProgramNodes = new Map();

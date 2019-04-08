@@ -85,6 +85,20 @@ export class ProgramState {
     }
   }
 
+  constrainSymbol(symbol: ts.Symbol, constraint: Constraint): ProgramState | undefined {
+    let nextState: ProgramState = this;
+    let sv = nextState.sv(symbol);
+    if (!sv) {
+      sv = simpleSymbolicValue();
+      nextState = nextState.setSV(symbol, sv);
+    }
+    const svConstraints = constrain(nextState.getConstraints(sv), constraint);
+    if (!svConstraints) {
+      return undefined;
+    }
+    return new ProgramState(nextState.symbolicValues, nextState.expressionStack, nextState.constraints.set(sv, svConstraints));
+  }
+
   constrainToTruthy() {
     return this.constrain(truthyConstraint());
   }
